@@ -1,118 +1,117 @@
 # homelab-dotfiles
 
-Minimal, headless [NixOS](https://nixos.org/) configuration for a single homelab host, built as a [Nix flake](https://nixos.wiki/wiki/Flakes). Disk layout is declared with [disko](https://github.com/nix-community/disko) and the user environment is managed with [home-manager](https://github.com/nix-community/home-manager).
+Minimal, headless NixOS configuration for a single homelab host, managed as a Nix
+flake. Disks are declared with [disko](https://github.com/nix-community/disko),
+user environment with [home-manager](https://github.com/nix-community/home-manager),
+and remote updates run through [deploy-rs](https://github.com/serokell/deploy-rs).
 
-## Layout
+## Overview
+
+- **Host:** `homelab` — `x86_64-linux`, systemd-boot / EFI, ext4 root on a single disk (`/dev/sda`).
+- **User:** `admin` (wheel, passwordless sudo, SSH key auth only). Root SSH login is disabled.
+- **Shell:** zsh with powerlevel10k.
+- **Services:** OpenSSH (port 22 only), fail2ban.
 
 ```
-flake.nix                  # inputs, nixosConfigurations.homelab, nixfmt formatter
-hosts/homelab/
-  default.nix              # host system config (SSH, users, nix, packages, zsh)
-  disko.nix                # declarative disk partitioning (/dev/nvme0n1)
-  hardware-configuration.nix  # placeholder — regenerated on the target at install
-  p10k.zsh                 # powerlevel10k prompt, exposed at /etc/p10k.zsh
-home/admin/default.nix     # home-manager config for the `admin` user (git)
+.
+├── flake.nix                 # inputs + nixosConfigurations.homelab + deploy nodes
+├── hosts/homelab/
+│   ├── default.nix           # system config (users, ssh, nix, packages)
+│   ├── disko.nix             # declarative disk layout (/dev/sda)
+│   ├── hardware-configuration.nix
+│   └── p10k.zsh              # prompt theme
+└── home/admin/               # home-manager config for `admin`
 ```
 
-## What you get
+## Prerequisites
 
-- Pinned to `nixos-26.05`, with flakes and `nix-command` enabled.
-- `systemd-boot` on EFI.
-- Single `admin` user (in `wheel`, passwordless sudo), with `zsh` + powerlevel10k, autosuggestions and syntax highlighting.
-- OpenSSH with root login disabled, `fail2ban`, and a firewall that only opens port 22.
-- Weekly garbage collection (`--delete-older-than 14d`) and automatic store optimisation.
-- Timezone `Europe/Berlin`, locale `en_US.UTF-8`.
+- Nix with flakes enabled on the machine you run commands *from* (the controller).
+- The target's disk name. disko is configured for `/dev/sda` — verify with `lsblk`
+  and edit [hosts/homelab/disko.nix](hosts/homelab/disko.nix) if the target differs.
+- An SSH public key added to `admin` in
+  [hosts/homelab/default.nix](hosts/homelab/default.nix)
+  (`users.users.admin.openssh.authorizedKeys.keys`). Without it there is no way to
+  log in after install — root SSH is disabled by design.
 
-## Installing
+> ⚠️ The disko install steps **erase the target disk**. Make sure you have the
+> right machine and device.
 
-> **Before you start:** `disko` will **erase** the target disk. The layout in
-> [`hosts/homelab/disko.nix`](hosts/homelab/disko.nix) is hardcoded to
-> `/dev/nvme0n1` — confirm with `lsblk` that this is the right device (or edit
-> the file) before running anything below.
+## 1. Physical install (NixOS live installer)
 
-### From the NixOS installer (physical access)
-
-Boot the machine from the official NixOS ISO and run:
+Boot the official NixOS installer ISO on the target, then:
 
 ```sh
-# 1. Partition, format, and mount the disk from disko.nix
-sudo nix --extra-experimental-features "nix-command flakes" \
-  run github:nix-community/disko -- \
+# become root and get git
+sudo -i
+nix-shell -p git
+
+# confirm the disk name matches disko.nix (/dev/sda); edit the flake if not
+lsblk
+
+# partition, format, and mount the target disk
+nix run github:nix-community/disko -- \
   --mode disko \
   --flake github:Derviloper/homelab-dotfiles#homelab
 
-# 2. Install the system from the flake
-sudo nixos-install --flake github:Derviloper/homelab-dotfiles#homelab
-
-# 3. Set a root password when prompted, then reboot
-sudo reboot
+# install the system onto the mounted target
+nixos-install --flake github:Derviloper/homelab-dotfiles#homelab
 ```
 
-After reboot, log in as **root at the console** with the password you set
-(`PermitRootLogin = "no"` only blocks root over SSH, not the local console).
-The `admin` user ships without a password, so set one straight away:
+Set a root password when prompted, then `reboot`.
+
+> **Different hardware?** `hardware-configuration.nix` is committed and specific to
+> the original machine. If the target hardware differs, regenerate it before
+> installing: `nixos-generate-config --no-filesystems --root /mnt` and replace
+> [hosts/homelab/hardware-configuration.nix](hosts/homelab/hardware-configuration.nix).
+
+## 2. Remote install (nixos-anywhere, over SSH)
+
+Use this when the target is reachable over SSH as `root` — e.g. booted into the
+NixOS live installer with a root password set (`passwd`), or any existing Linux.
+
+From the controller (nixos-anywhere runs via `nix run`, no flake input needed):
 
 ```sh
-passwd admin
+nix run github:nix-community/nixos-anywhere -- \
+  --flake github:Derviloper/homelab-dotfiles#homelab \
+  --target-host root@<target-ip>
 ```
 
-This installs from the committed [`hardware-configuration.nix`](hosts/homelab/hardware-configuration.nix),
-which is a generic placeholder — enough to boot most x86_64 UEFI machines, but
-without this host's CPU microcode or special kernel modules. To capture the real
-hardware, clone the repo locally after step 1 and generate the config before
-installing:
+nixos-anywhere kexecs into an installer, runs disko (**erasing `/dev/sda`**),
+installs the system, and reboots. After reboot, log in as `admin` with your SSH
+key — root SSH is disabled.
+
+## 3. Updates (deploy-rs)
+
+The flake defines a deploy node for `homelab` (connects as `admin`, activates via
+passwordless sudo, with automatic rollback on failure). From a checkout of this
+repo on the controller:
 
 ```sh
-# after disko has mounted everything under /mnt
-git clone https://github.com/Derviloper/homelab-dotfiles /mnt/tmp/cfg
-nixos-generate-config --no-filesystems --root /mnt --show-hardware-config \
-  > /mnt/tmp/cfg/hosts/homelab/hardware-configuration.nix
-sudo nixos-install --flake /mnt/tmp/cfg#homelab
+nix run github:serokell/deploy-rs -- .#homelab
+# or, with deploy-rs installed:
+deploy .#homelab
 ```
 
-`--no-filesystems` is used because the filesystems are declared in `disko.nix`.
-Commit the regenerated `hardware-configuration.nix` back to the repo afterwards.
+The node targets the hostname `homelab`, so it must resolve from the controller
+(DNS, mDNS, or an `/etc/hosts` entry). Override the target per invocation if
+needed:
 
-### Remotely with nixos-anywhere (over SSH)
+```sh
+deploy .#homelab --hostname <ip>
+```
 
-For an unattended install onto a machine reachable over SSH, use
-[`nixos-anywhere`](https://github.com/nix-community/nixos-anywhere), which runs
-`disko` and installs the flake in one step:
+### Updating locally (on the host)
 
-1. Boot the target into a NixOS installer / rescue environment reachable over SSH.
-2. From a checkout of this repo, run:
-
-   ```sh
-   nix run github:nix-community/nixos-anywhere -- \
-     --flake .#homelab \
-     --generate-hardware-config nixos-generate-config ./hosts/homelab/hardware-configuration.nix \
-     root@<target-ip>
-   ```
-
-3. Commit the regenerated `hardware-configuration.nix`.
-
-> Note: this flow needs a way to log in afterwards — the config currently sets
-> no password or SSH key for `admin`, so add `users.users.admin.openssh.authorizedKeys.keys`
-> (or a `hashedPassword`) before relying on remote access.
-
-## Updating
-
-After the initial install, rebuild from the host:
+If you're on the machine itself:
 
 ```sh
 sudo nixos-rebuild switch --flake .#homelab
 ```
 
-Bump pinned inputs with:
+## Maintenance
 
-```sh
-nix flake update
-```
-
-## Formatting
-
-```sh
-nix fmt
-```
-
-Formats the tree with [`nixfmt`](https://github.com/NixOS/nixfmt).
+- Format Nix files: `nix fmt` (nixfmt).
+- Validate the flake and deploy config: `nix flake check`.
+- The nix store is garbage-collected weekly and auto-optimised (see
+  [hosts/homelab/default.nix](hosts/homelab/default.nix)).

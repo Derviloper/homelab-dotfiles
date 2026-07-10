@@ -21,6 +21,9 @@
   users.users.admin = {
     isNormalUser = true;
     extraGroups = [ "wheel" ];
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILBm+ebJElO2PL4BqWgb/wdM+QZPYshQRDTSwnBGYobz"
+    ];
   };
 
   security.sudo.wheelNeedsPassword = false;
@@ -30,6 +33,11 @@
     settings = {
       PermitRootLogin = "no";
     };
+    extraConfig = ''
+      PermitEmptyPasswords no
+      ClientAliveInterval 300
+      ClientAliveCountMax 3
+    '';
   };
 
   services.fail2ban.enable = true;
@@ -66,7 +74,7 @@
     fzf
     zsh
     zsh-powerlevel10k
-    pkgsBuildBuild.ghostty.terminfo
+    ghostty.terminfo
   ];
 
   programs.zsh = {
