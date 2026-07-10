@@ -66,6 +66,7 @@
     fzf
     zsh
     zsh-powerlevel10k
+    pkgsBuildBuild.ghostty.terminfo
   ];
 
   programs.zsh = {
@@ -84,7 +85,7 @@
 
   environment.etc."p10k.zsh".source = ./p10k.zsh;
 
-  users.defaultUserShell = pkgs.unstable.zsh;
+  users.defaultUserShell = pkgs.zsh;
 
   home-manager.sharedModules = [ { home.file.".zshrc".text = ""; } ];
 
