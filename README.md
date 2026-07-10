@@ -16,9 +16,16 @@ and remote updates run through [deploy-rs](https://github.com/serokell/deploy-rs
 .
 ├── flake.nix                 # inputs + nixosConfigurations.homelab + deploy nodes
 ├── hosts/homelab/
-│   ├── default.nix           # system config (users, ssh, nix, packages)
+│   ├── default.nix           # host specifics (hostname, boot) + module imports
 │   ├── disko.nix             # declarative disk layout (/dev/sda)
-│   ├── hardware-configuration.nix
+│   └── hardware-configuration.nix
+├── modules/                  # cross-cutting system config, one file per concern
+│   ├── nix.nix               # nix daemon settings, gc, allowUnfree
+│   ├── ssh.nix               # OpenSSH + fail2ban
+│   ├── networking.nix        # avahi (mDNS) + firewall
+│   ├── users.nix             # admin user, sudo, home-manager
+│   ├── shell.nix             # zsh, packages, prompt
+│   ├── locale.nix            # timezone + locale
 │   └── p10k.zsh              # prompt theme
 └── home/admin/               # home-manager config for `admin`
 ```
@@ -29,7 +36,7 @@ and remote updates run through [deploy-rs](https://github.com/serokell/deploy-rs
 - The target's disk name. disko is configured for `/dev/sda` — verify with `lsblk`
   and edit [hosts/homelab/disko.nix](hosts/homelab/disko.nix) if the target differs.
 - An SSH public key added to `admin` in
-  [hosts/homelab/default.nix](hosts/homelab/default.nix)
+  [modules/users.nix](modules/users.nix)
   (`users.users.admin.openssh.authorizedKeys.keys`). Without it there is no way to
   log in after install — root SSH is disabled by design.
 
@@ -111,4 +118,4 @@ sudo nixos-rebuild switch --flake .#homelab
 - Format Nix files: `nix fmt` (nixfmt).
 - Validate the flake and deploy config: `nix flake check`.
 - The nix store is garbage-collected weekly and auto-optimised (see
-  [hosts/homelab/default.nix](hosts/homelab/default.nix)).
+  [modules/nix.nix](modules/nix.nix)).
