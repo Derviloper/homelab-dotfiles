@@ -25,7 +25,7 @@ and remote updates run through [deploy-rs](https://github.com/serokell/deploy-rs
 
 ## Prerequisites
 
-- Nix with flakes enabled on the machine you run commands *from* (the controller).
+- Nix with flakes enabled on the machine you run commands _from_ (the controller).
 - The target's disk name. disko is configured for `/dev/sda` — verify with `lsblk`
   and edit [hosts/homelab/disko.nix](hosts/homelab/disko.nix) if the target differs.
 - An SSH public key added to `admin` in
@@ -41,20 +41,17 @@ and remote updates run through [deploy-rs](https://github.com/serokell/deploy-rs
 Boot the official NixOS installer ISO on the target, then:
 
 ```sh
-# become root and get git
-sudo -i
-nix-shell -p git
-
-# confirm the disk name matches disko.nix (/dev/sda); edit the flake if not
-lsblk
-
-# partition, format, and mount the target disk
-nix run github:nix-community/disko -- \
+# 1. Partition, format, and mount the disk from disko.nix
+sudo nix --extra-experimental-features "nix-command flakes" \
+  run github:nix-community/disko -- \
   --mode disko \
   --flake github:Derviloper/homelab-dotfiles#homelab
 
-# install the system onto the mounted target
-nixos-install --flake github:Derviloper/homelab-dotfiles#homelab
+# 2. Install the system from the flake
+sudo nixos-install --flake github:Derviloper/homelab-dotfiles#homelab
+
+# 3. Set a root password when prompted, then reboot
+sudo reboot
 ```
 
 Set a root password when prompted, then `reboot`.
@@ -74,7 +71,7 @@ From the controller (nixos-anywhere runs via `nix run`, no flake input needed):
 ```sh
 nix run github:nix-community/nixos-anywhere -- \
   --flake github:Derviloper/homelab-dotfiles#homelab \
-  --target-host root@<target-ip>
+  --target-host homelab
 ```
 
 nixos-anywhere kexecs into an installer, runs disko (**erasing `/dev/sda`**),
