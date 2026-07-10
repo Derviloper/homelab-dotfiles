@@ -6,6 +6,7 @@
     ../../modules/nix.nix
     ../../modules/ssh.nix
     ../../modules/networking.nix
+    ../../modules/virtualisation.nix
     ../../modules/users.nix
     ../../modules/shell.nix
     ../../modules/locale.nix

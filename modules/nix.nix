@@ -9,6 +9,12 @@
         "flakes"
       ];
       auto-optimise-store = true;
+      # Allow deploy-rs (connecting as admin/wheel) to push unsigned,
+      # locally-built store paths without a signature check.
+      trusted-users = [
+        "root"
+        "@wheel"
+      ];
     };
 
     gc = {
