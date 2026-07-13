@@ -3,13 +3,14 @@
   imports = [
     ./hardware-configuration.nix
     ./disko.nix
-    ../../modules/nix.nix
-    ../../modules/ssh.nix
-    ../../modules/networking.nix
-    ../../modules/virtualisation.nix
-    ../../modules/users.nix
-    ../../modules/shell.nix
     ../../modules/locale.nix
+    ../../modules/networking.nix
+    ../../modules/nix.nix
+    ../../modules/shell.nix
+    ../../modules/ssh.nix
+    ../../modules/tailscale.nix
+    ../../modules/users.nix
+    ../../modules/virtualisation.nix
   ];
 
   networking.hostName = "homelab";
