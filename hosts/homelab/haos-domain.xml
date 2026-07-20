@@ -33,6 +33,13 @@
       <source bridge='br0'/>
       <model type='virtio'/>
     </interface>
+    <!-- SONOFF Dongle Plus MG24 (Zigbee), passed through by USB vendor/product -->
+    <hostdev mode='subsystem' type='usb' managed='yes'>
+      <source>
+        <vendor id='0x10c4'/>
+        <product id='0xea60'/>
+      </source>
+    </hostdev>
     <serial type='pty'><target type='isa-serial' port='0'/></serial>
     <console type='pty'><target type='serial' port='0'/></console>
     <watchdog model='itco' action='reset'/>
