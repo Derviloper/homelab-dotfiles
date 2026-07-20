@@ -40,6 +40,13 @@
         <product id='0xea60'/>
       </source>
     </hostdev>
+    <!-- FTDI FT230X Basic UART, passed through by USB vendor/product -->
+    <hostdev mode='subsystem' type='usb' managed='yes'>
+      <source>
+        <vendor id='0x0403'/>
+        <product id='0x6015'/>
+      </source>
+    </hostdev>
     <serial type='pty'><target type='isa-serial' port='0'/></serial>
     <console type='pty'><target type='serial' port='0'/></console>
     <watchdog model='itco' action='reset'/>
