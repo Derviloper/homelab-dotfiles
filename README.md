@@ -200,9 +200,15 @@ virsh --connect qemu:///system start haos
 
 ```xml
 <hostdev mode="subsystem" type="usb" managed="yes">
-  <source><vendor id="0x1a86"/><product id="0x55d4"/></source>
+  <source startupPolicy="optional"><vendor id="0x1a86"/><product id="0x55d4"/></source>
 </hostdev>
 ```
+
+`startupPolicy="optional"` lets the VM boot even when a dongle is unplugged —
+libvirt skips any missing device instead of refusing to start the whole guest.
+Without it (the default, `mandatory`), an absent USB radio blocks the VM from
+starting. The dongle is only re-attached on VM start, so reconnect it and restart
+the guest to bring the integration back.
 
 ## Maintenance
 

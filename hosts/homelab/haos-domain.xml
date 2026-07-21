@@ -33,16 +33,18 @@
       <source bridge='br0'/>
       <model type='virtio'/>
     </interface>
-    <!-- SONOFF Dongle Plus MG24 (Zigbee), passed through by USB vendor/product -->
+    <!-- SONOFF Dongle Plus MG24 (Zigbee), passed through by USB vendor/product.
+         startupPolicy='optional' lets the VM boot even when the dongle is absent. -->
     <hostdev mode='subsystem' type='usb' managed='yes'>
-      <source>
+      <source startupPolicy='optional'>
         <vendor id='0x10c4'/>
         <product id='0xea60'/>
       </source>
     </hostdev>
-    <!-- FTDI FT230X Basic UART, passed through by USB vendor/product -->
+    <!-- FTDI FT230X Basic UART, passed through by USB vendor/product.
+         startupPolicy='optional' lets the VM boot even when the dongle is absent. -->
     <hostdev mode='subsystem' type='usb' managed='yes'>
-      <source>
+      <source startupPolicy='optional'>
         <vendor id='0x0403'/>
         <product id='0x6015'/>
       </source>
